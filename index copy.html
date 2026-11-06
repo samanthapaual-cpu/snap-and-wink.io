@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="assets/frames/logo1.png">
+    <title>Snap and Wink</title>
+</head>
+<body>
+    <header class="site-header">
+        <a class="wordmark" href="#top" aria-label="Snap and Wink home"><img class="wordmark-logo" src="assets/frames/logo1.png" alt=""><span class="wordmark-name">Snap &amp; Wink</span></a>
+        <span class="header-note">A little joy, one frame at a time</span>
+    </header>
+
+    <main class="container" id="top">
+        <section class="page-intro">
+            <p class="eyebrow">YOUR ONLINE PHOTOBOOTH</p>
+            <h1>Snap and Wink.</h1>
+            <p>Choose your frame, strike a pose, and save a little memory.</p>
+        </section>
+
+        <div class="workspace">
+            <section class="preview-panel" aria-label="Camera preview">
+                <!-- <div class="section-heading"><div><span class="step">01</span><h2>Your camera</h2></div><span class="live-tag"><i></i> LIVE PREVIEW</span></div> -->
+                <video id="video" autoplay playsinline muted></video>
+                <div class="stage">
+                    <canvas id="canvas"></canvas>
+                    <div class="overlay"></div>
+                    <div class="flash"></div>
+                </div>
+                <p id="status" aria-live="polite">Loading camera...</p>
+                <div class="buttons">
+                    <button id="mirror-btn">Mirror: On</button>
+                    <button id="filter-btn">Filter: None</button>
+                    <button id="capture-btn" class="main" disabled>Capture</button>
+                    <button id="retake-btn" disabled>Retake</button>
+                </div>
+            </section>
+
+            <aside class="options-panel">
+                <div class="section-heading"><div><span class="step"></span><h2>Choose a frame</h2></div></div>
+                <p class="panel-copy">Find the look that feels like you.</p>
+                <div id="frames" role="group" aria-label="Choose a frame"></div>
+                <details class="settings">
+                    <summary>Timer settings</summary>
+                    <div class="controls">
+                        <label>Countdown (sec) <input type="number" id="timer" min="0" value="3"></label>
+                    </div>
+                </details>
+                <p class="tip"><span>✦</span> Good light makes every photo glow.</p>
+            </aside>
+        </div>
+
+        <dialog id="result-box" aria-labelledby="result-title">
+            <button id="close-result-btn" class="close-result" type="button" aria-label="Close photostrip">&times;</button>
+            <div class="result-copy">
+                <p class="eyebrow">READY TO KEEP</p>
+                <h2 class="label" id="result-title">Your photostrip</h2>
+                <p class="result-description">Your moments are all together. Save your strip and share the smiles.</p>
+                <button id="download-btn" class="main">Download photo</button>
+            </div>
+            <div class="result-preview">
+                <canvas id="result"></canvas>
+            </div>
+        </dialog>
+    </main>
+    <footer class="site-footer"><span>SNAP &amp; WINK</span><span>sam.dev</span></footer>
+    <script src="script.js"></script>
+</body>
+</html>

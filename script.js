@@ -1,6 +1,11 @@
+//Frames (slots is optional: the number of photo areas, used by the filter chips)
 const FRAMES = [
-    {name:"pink", src:"assets/frames/pink.png"},
-    {name:"barbie", src:"assets/frames/barbie.png"}
+    {name:"1", src:"assets/frames/pink.png"},
+    {name:"2", src:"assets/frames/barbie.png"},
+    {name:"3", src:"assets/frames/8.png"},
+    {name:"4", src:"assets/frames/4.png"},
+    {name:"5", src:"assets/frames/5.png"},
+    {name:"6", src:"assets/frames/6.png"}
 ];
 
 //Elements
@@ -13,14 +18,13 @@ const flash = document.querySelector(".flash");
 const statusElement = document.getElementById("status");
 
 const captureBtn = document.getElementById("capture-btn");
+const retakeBtn = document.getElementById("retake-btn");
 const filterBtn = document.getElementById("filter-btn");
 const mirrorBtn = document.getElementById("mirror-btn");
 
 const timerInput = document.getElementById("timer");
-const pauseInput = document.getElementById("pause");
 
 const frames = document.getElementById("frames");
-const taken = document.getElementById("taken");
 
 const resultBox = document.getElementById("result-box");
 const resultCanvas = document.getElementById("result");
@@ -69,12 +73,7 @@ function detectSlots(image) {
     const tempContext = tempCanvas.getContext("2d");
     tempContext.drawImage(image, 0, 0);
 
-    const pixels = tempContext.getImageData(
-        0,
-        0,
-        width,
-        height
-    ).data;
+    const pixels = tempContext.getImageData(0, 0, width, height).data;
 
     const seen = new Uint8Array(width * height);
     const stack = new Int32Array(width * height);
@@ -85,30 +84,19 @@ function detectSlots(image) {
     let stackPosition = 0;
 
     function addPixel(pixel) {
-        if (
-            !seen[pixel] &&
-            pixels[pixel * 4 + 3] <= 10
-        ) {
+        if (!seen[pixel] && pixels[pixel * 4 + 3] <= 10) {
             seen[pixel] = 1;
             stack[stackPosition] = pixel;
             stackPosition++;
         }
     }
 
-    for (
-        let start = 0;
-        start < width * height;
-        start++
-    ) {
-        if (
-            seen[start] ||
-            pixels[start * 4 + 3] > 10
-        ) {
+    for (let start = 0; start < width * height; start++) {
+        if (seen[start] || pixels[start * 4 + 3] > 10) {
             continue;
         }
 
         let area = 0;
-
         let left = width;
         let top = height;
         let right = 0;
@@ -120,7 +108,6 @@ function detectSlots(image) {
             stackPosition--;
 
             const pixel = stack[stackPosition];
-
             const x = pixel % width;
             const y = Math.floor(pixel / width);
 
@@ -131,21 +118,10 @@ function detectSlots(image) {
             if (y < top) top = y;
             if (y > bottom) bottom = y;
 
-            if (x > 0) {
-                addPixel(pixel - 1);
-            }
-
-            if (x < width - 1) {
-                addPixel(pixel + 1);
-            }
-
-            if (y > 0) {
-                addPixel(pixel - width);
-            }
-
-            if (y < height - 1) {
-                addPixel(pixel + width);
-            }
+            if (x > 0) addPixel(pixel - 1);
+            if (x < width - 1) addPixel(pixel + 1);
+            if (y > 0) addPixel(pixel - width);
+            if (y < height - 1) addPixel(pixel + width);
         }
 
         if (area >= minimumArea) {
@@ -158,12 +134,9 @@ function detectSlots(image) {
         }
     }
 
-    //Sort slots from top to bottom,
-    //and left to right
+    //Sort slots from top to bottom, and left to right
     foundSlots.sort((a, b) => {
-        const sameRow =
-            Math.abs(a.y - b.y) <
-            Math.min(a.h, b.h) / 2;
+        const sameRow = Math.abs(a.y - b.y) < Math.min(a.h, b.h) / 2;
 
         if (sameRow) {
             return a.x - b.x;
@@ -178,15 +151,9 @@ function detectSlots(image) {
 //Load Frame Image
 function loadImage(source) {
     return new Promise((resolve, reject) => {
-
         const image = new Image();
-
-        image.onload = () => {
-            resolve(image);
-        };
-
+        image.onload = () => resolve(image);
         image.onerror = reject;
-
         image.src = source;
     });
 }
@@ -197,10 +164,8 @@ async function selectFrame(frame, button) {
         return;
     }
 
-    const buttons = frames.querySelectorAll("button");
-
-    buttons.forEach(button => {
-        button.classList.remove("on");
+    frames.querySelectorAll("button").forEach(item => {
+        item.classList.remove("on");
     });
 
     button.classList.add("on");
@@ -209,9 +174,7 @@ async function selectFrame(frame, button) {
         frameImage = await loadImage(frame.src);
     }
     catch {
-        showStatus(
-            `Could not load ${frame.src}. Check the file path.`
-        );
+        showStatus(`Could not load ${frame.src}. Check the file path.`);
         return;
     }
 
@@ -220,22 +183,13 @@ async function selectFrame(frame, button) {
     resetBooth();
 
     captureBtn.disabled = slots.length === 0;
+    retakeBtn.disabled = true;
 
     if (slots.length > 0) {
-
-        const word =
-            slots.length === 1
-                ? "slot"
-                : "slots";
-
-        showStatus(
-            `${slots.length} photo ${word} found. Press Capture.`
-        );
-
+        const word = slots.length === 1 ? "slot" : "slots";
+        showStatus(`${slots.length} photo ${word} found. Press Capture.`);
     } else {
-        showStatus(
-            "No transparent photo areas found in this frame."
-        );
+        showStatus("No transparent photo areas found in this frame.");
     }
 }
 
@@ -244,7 +198,7 @@ FRAMES.forEach((frame, index) => {
     const button = document.createElement("button");
 
     button.innerHTML = `
-        <img src="${frame.src}" alt="">
+        <img src="${frame.src}" alt="" loading="lazy">
         <span>${frame.name}</span>
     `;
 
@@ -260,20 +214,13 @@ FRAMES.forEach((frame, index) => {
 });
 
 //Camera
-if (
-    navigator.mediaDevices &&
-    navigator.mediaDevices.getUserMedia
-) {
+if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
 
     navigator.mediaDevices.getUserMedia({
         video: {
             facingMode: "user",
-            width: {
-                ideal: 1280
-            },
-            height: {
-                ideal: 720
-            }
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
         }
     })
 
@@ -287,29 +234,20 @@ if (
     })
 
     .catch(() => {
-        showStatus(
-            "Camera unavailable. Allow camera access in your browser, then reload."
-        );
+        showStatus("Camera unavailable. Allow camera access in your browser, then reload.");
     });
 
 } else {
-    showStatus(
-        "The camera needs https or localhost."
-    );
+    showStatus("The camera needs https or localhost.");
 }
 
-//Set canvas size
-function sizeCanvas(slot) {
-    const width = Math.max(650, slot.w);
+//Keep the live preview and captured poses the same size for every frame.
+//The finished strip is still rendered at the selected frame's native size.
+function sizeCanvas() {
+    const width = 800;
+    const height = 600;
 
-    const height = Math.round(
-        width * slot.h / slot.w
-    );
-
-    if (
-        canvas.width !== width ||
-        canvas.height !== height
-    ) {
+    if (canvas.width !== width || canvas.height !== height) {
         canvas.width = width;
         canvas.height = height;
     }
@@ -323,10 +261,7 @@ function drawVideo() {
     const width = canvas.width;
     const height = canvas.height;
 
-    const scale = Math.min(
-        videoWidth / width,
-        videoHeight / height
-    );
+    const scale = Math.min(videoWidth / width, videoHeight / height);
 
     const sourceWidth = width * scale;
     const sourceHeight = height * scale;
@@ -357,36 +292,33 @@ function drawVideo() {
 
 //Camera preview loop
 function updateCamera() {
-    if (
-        video.videoWidth &&
-        slots.length
-    ) {
+    if (video.videoWidth && slots.length) {
         drawVideo();
     }
 
     requestAnimationFrame(updateCamera);
 }
 
-//Reset booth
+//Reset the current round and dismiss any open result dialog.
 function resetBooth() {
     photos = [];
 
-    taken.innerHTML = "";
-    resultBox.hidden = true;
-    canvas.parentElement.hidden = false;
+    if (resultBox.open) {
+        resultBox.close();
+    }
 
     if (slots.length) {
-        sizeCanvas(slots[0]);
+        sizeCanvas();
     }
 }
 
 //Disable controls
 function setControls(disabled) {
     captureBtn.disabled = disabled;
+    retakeBtn.disabled = disabled;
     filterBtn.disabled = disabled;
     mirrorBtn.disabled = disabled;
     timerInput.disabled = disabled;
-    pauseInput.disabled = disabled;
 }
 
 //Save current camera image
@@ -396,13 +328,7 @@ function takePhoto() {
     photo.width = canvas.width;
     photo.height = canvas.height;
 
-    const photoContext = photo.getContext("2d");
-
-    photoContext.drawImage(
-        canvas,
-        0,
-        0
-    );
+    photo.getContext("2d").drawImage(canvas, 0, 0);
 
     return photo;
 }
@@ -410,11 +336,7 @@ function takePhoto() {
 //Capture button
 captureBtn.onclick = async () => {
 
-    if (
-        busy ||
-        !slots.length ||
-        !video.videoWidth
-    ) {
+    if (busy || !slots.length || !video.videoWidth) {
         return;
     }
 
@@ -423,34 +345,16 @@ captureBtn.onclick = async () => {
     setControls(true);
     resetBooth();
 
-    const countdown = Math.max(
-        0,
-        Number(timerInput.value) || 0
-    );
+    const countdown = Math.max(0, Number(timerInput.value) || 0);
 
-    const pause = Math.max(
-        0,
-        Number(pauseInput.value) || 0
-    );
+    for (let i = 0; i < slots.length; i++) {
 
-    for (
-        let i = 0;
-        i < slots.length;
-        i++
-    ) {
+        sizeCanvas();
 
-        sizeCanvas(slots[i]);
-
-        showStatus(
-            `Pose ${i + 1} of ${slots.length}: get ready`
-        );
+        showStatus(`Pose ${i + 1} of ${slots.length}: get ready`);
 
         //Countdown
-        for (
-            let time = countdown;
-            time > 0;
-            time--
-        ) {
+        for (let time = countdown; time > 0; time--) {
             showOverlay(time);
             await wait(1000);
         }
@@ -465,92 +369,59 @@ captureBtn.onclick = async () => {
         void flash.offsetWidth;
         flash.classList.add("go");
 
-        //Thumbnail
-        const thumbnail = document.createElement("img");
-
-        thumbnail.src =
-            photos[i].toDataURL(
-                "image/jpeg",
-                0.7
-            );
-
-        thumbnail.alt = `Pose ${i + 1}`;
-
-        taken.appendChild(thumbnail);
-
-        //Pause before next pose
-        if (i < slots.length - 1) {
-
-            sizeCanvas(slots[i + 1]);
-
-            showStatus(
-                `Nice! Pose ${i + 2} is next.`
-            );
-
-            for (
-                let time = pause;
-                time > 0;
-                time--
-            ) {
-                showOverlay(
-                    `Next pose in ${time}`,
-                    true
-                );
-
-                await wait(1000);
-            }
-
-            if (!pause) {
-                await wait(600);
-            }
-
-            showOverlay("");
-        }
     }
 
-    //Create final photo
+    //Create final photo, then go back to the live preview
     compose();
+    sizeCanvas();
 
-    canvas.parentElement.hidden = true;
-    resultBox.hidden = false;
+    resultBox.showModal();
 
-    showStatus(
-        "All done! Download your photo or retake."
-    );
+    showStatus("All done! Download your photo or retake.");
 
     busy = false;
     setControls(false);
 };
 
+document.getElementById("close-result-btn").onclick = () => {
+    resultBox.close();
+};
+
 //Create final photo
 function compose() {
 
-    resultCanvas.width =
-        frameImage.naturalWidth;
+    resultCanvas.width = frameImage.naturalWidth;
+    resultCanvas.height = frameImage.naturalHeight;
 
-    resultCanvas.height =
-        frameImage.naturalHeight;
-
-    const resultContext =
-        resultCanvas.getContext("2d");
+    const resultContext = resultCanvas.getContext("2d");
 
     slots.forEach((slot, index) => {
+        const photo = photos[index];
+        const photoRatio = photo.width / photo.height;
+        const slotRatio = slot.w / slot.h;
+
+        let sourceX = 0;
+        let sourceY = 0;
+        let sourceWidth = photo.width;
+        let sourceHeight = photo.height;
+
+        // Crop to fill the frame opening without distorting the photo.
+        if (photoRatio > slotRatio) {
+            sourceWidth = photo.height * slotRatio;
+            sourceX = (photo.width - sourceWidth) / 2;
+        } else {
+            sourceHeight = photo.width / slotRatio;
+            sourceY = (photo.height - sourceHeight) / 2;
+        }
 
         resultContext.drawImage(
-            photos[index],
-            slot.x,
-            slot.y,
-            slot.w,
-            slot.h
+            photo,
+            sourceX, sourceY, sourceWidth, sourceHeight,
+            slot.x, slot.y, slot.w, slot.h
         );
-
     });
 
-    resultContext.drawImage(
-        frameImage,
-        0,
-        0
-    );
+    resultContext.drawImage(frameImage, 0, 0);
 }
 
 //Download
@@ -558,15 +429,10 @@ document.getElementById("download-btn").onclick = () => {
 
     resultCanvas.toBlob(blob => {
 
-        const link =
-            document.createElement("a");
+        const link = document.createElement("a");
 
-        link.href =
-            URL.createObjectURL(blob);
-
-        link.download =
-            "photobooth.png";
-
+        link.href = URL.createObjectURL(blob);
+        link.download = "photobooth.png";
         link.click();
 
         setTimeout(() => {
@@ -576,12 +442,9 @@ document.getElementById("download-btn").onclick = () => {
     }, "image/png");
 };
 
-//Retake
-document.getElementById("retake-btn").onclick = () => {
-
-    resetBooth();
-
-    showStatus("Press Capture.");
+//Retake (starts a new round right away)
+retakeBtn.onclick = () => {
+    captureBtn.click();
 };
 
 //Filter
@@ -593,8 +456,7 @@ filterBtn.onclick = () => {
         filterIndex = 0;
     }
 
-    filterBtn.textContent =
-        `Filter: ${filters[filterIndex][0]}`;
+    filterBtn.textContent = `Filter: ${filters[filterIndex][0]}`;
 };
 
 //Mirror
@@ -602,6 +464,5 @@ mirrorBtn.onclick = () => {
 
     mirror = !mirror;
 
-    mirrorBtn.textContent =
-        `Mirror: ${mirror ? "On" : "Off"}`;
+    mirrorBtn.textContent = `Mirror: ${mirror ? "On" : "Off"}`;
 };
