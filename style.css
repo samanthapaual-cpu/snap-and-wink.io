@@ -58,6 +58,9 @@ body {
 .tip span { margin-right: 6px; color: var(--plum); }
 .site-footer { display: flex; justify-content: space-between; width: min(100% - 48px, 1240px); margin: 26px auto 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: .72rem; }
 .site-footer span:first-child { color: var(--plum); font-weight: 700; letter-spacing: .1em; }
+.site-footer a { color: var(--muted); text-decoration: none; }
+.site-footer a:hover { color: var(--plum); text-decoration: underline; }
+.site-footer a:focus-visible { outline: 2px solid var(--plum); outline-offset: 3px; border-radius: 2px; }
 
 h1 {
     margin: 0;

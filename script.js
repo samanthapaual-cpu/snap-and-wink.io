@@ -214,32 +214,43 @@ FRAMES.forEach((frame, index) => {
 });
 
 //Camera
-if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+async function startCamera() {
+    if (!window.isSecureContext) {
+        showStatus("Camera access needs a secure page. Open this site using HTTPS.");
+        return;
+    }
 
-    navigator.mediaDevices.getUserMedia({
-        video: {
-            facingMode: "user",
-            width: { ideal: 1280 },
-            height: { ideal: 720 }
-        }
-    })
+    if (!navigator.mediaDevices?.getUserMedia) {
+        showStatus("This browser does not support camera access. Try a recent version of Chrome, Safari, or Firefox.");
+        return;
+    }
 
-    .then(stream => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: "user",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        });
+
         video.srcObject = stream;
-
-        video.onloadedmetadata = () => {
-            video.play();
-            updateCamera();
+        await video.play();
+        updateCamera();
+        showStatus("Camera ready. Press Capture when you are ready.");
+    } catch (error) {
+        const messages = {
+            NotAllowedError: "Camera permission was blocked. Allow camera access for this site in your browser settings, then reload.",
+            NotFoundError: "No camera was found on this device.",
+            NotReadableError: "The camera is busy or unavailable. Close other apps using it, then reload.",
+            OverconstrainedError: "The camera could not meet the requested settings. Try another camera or browser."
         };
-    })
 
-    .catch(() => {
-        showStatus("Camera unavailable. Allow camera access in your browser, then reload.");
-    });
-
-} else {
-    showStatus("The camera needs https or localhost.");
+        showStatus(messages[error.name] || `Could not start the camera (${error.name || "unknown error"}). Check site permissions and try again.`);
+    }
 }
+
+startCamera();
 
 //Keep the live preview and captured poses the same size for every frame.
 //The finished strip is still rendered at the selected frame's native size.
