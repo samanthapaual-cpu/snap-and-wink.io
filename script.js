@@ -226,15 +226,32 @@ async function startCamera() {
     }
 
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: {
-                facingMode: "user",
-                width: { ideal: 1280 },
-                height: { ideal: 720 }
+        let stream;
+        try {
+            stream = await navigator.mediaDevices.getUserMedia({
+                audio: false,
+                video: {
+                    facingMode: { ideal: "user" },
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                }
+            });
+        } catch (error) {
+            // Some mobile browsers reject facingMode or resolution hints. Retry
+            // with the browser's default camera before reporting a failure.
+            if (error.name !== "OverconstrainedError" && error.name !== "TypeError") {
+                throw error;
             }
-        });
+            stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+        }
 
         video.srcObject = stream;
+        if (!video.videoWidth) {
+            await new Promise((resolve, reject) => {
+                video.addEventListener("loadedmetadata", resolve, { once: true });
+                video.addEventListener("error", reject, { once: true });
+            });
+        }
         await video.play();
         updateCamera();
         showStatus("Camera ready. Press Capture when you are ready.");
@@ -272,11 +289,17 @@ function drawVideo() {
     const width = canvas.width;
     const height = canvas.height;
 
-    const scale = Math.min(videoWidth / width, videoHeight / height);
+    const targetRatio = width / height;
+    const videoRatio = videoWidth / videoHeight;
+    let sourceWidth = videoRatio > targetRatio
+        ? videoHeight * targetRatio
+        : videoWidth;
+    let sourceHeight = videoRatio > targetRatio
+        ? videoHeight
+        : videoWidth / targetRatio;
 
-    const sourceWidth = width * scale;
-    const sourceHeight = height * scale;
-
+    const sourceX = (videoWidth - sourceWidth) / 2;
+    const sourceY = (videoHeight - sourceHeight) / 2;
     ctx.save();
 
     if (mirror) {
@@ -284,12 +307,10 @@ function drawVideo() {
         ctx.scale(-1, 1);
     }
 
-    ctx.filter = filters[filterIndex][1];
-
     ctx.drawImage(
         video,
-        (videoWidth - sourceWidth) / 2,
-        (videoHeight - sourceHeight) / 2,
+        sourceX,
+        sourceY,
         sourceWidth,
         sourceHeight,
         0,
@@ -339,9 +360,41 @@ function takePhoto() {
     photo.width = canvas.width;
     photo.height = canvas.height;
 
-    photo.getContext("2d").drawImage(canvas, 0, 0);
+    const photoContext = photo.getContext("2d");
+    photoContext.drawImage(canvas, 0, 0);
+    applyFilter(photoContext, photo.width, photo.height, filterIndex);
 
     return photo;
+}
+
+// Apply filters to the captured pixels instead of relying on the newer canvas
+// `filter` property, which is missing in some Safari versions.
+function applyFilter(context, width, height, index) {
+    if (index === 0) return;
+
+    const image = context.getImageData(0, 0, width, height);
+    const pixels = image.data;
+
+    for (let i = 0; i < pixels.length; i += 4) {
+        const red = pixels[i];
+        const green = pixels[i + 1];
+        const blue = pixels[i + 2];
+
+        if (index === 1) {
+            const gray = 0.299 * red + 0.587 * green + 0.114 * blue;
+            pixels[i] = pixels[i + 1] = pixels[i + 2] = gray;
+        } else if (index === 2) {
+            pixels[i] = Math.min(255, 0.393 * red + 0.769 * green + 0.189 * blue);
+            pixels[i + 1] = Math.min(255, 0.349 * red + 0.686 * green + 0.168 * blue);
+            pixels[i + 2] = Math.min(255, 0.272 * red + 0.534 * green + 0.131 * blue);
+        } else if (index === 3) {
+            pixels[i] = Math.min(255, red * 1.2);
+            pixels[i + 1] = Math.min(255, green * 1.2);
+            pixels[i + 2] = Math.min(255, blue * 1.2);
+        }
+    }
+
+    context.putImageData(image, 0, 0);
 }
 
 //Capture button
@@ -468,8 +521,8 @@ filterBtn.onclick = () => {
     }
 
     filterBtn.textContent = `Filter: ${filters[filterIndex][0]}`;
+    canvas.style.filter = filters[filterIndex][1];
 };
-
 //Mirror
 mirrorBtn.onclick = () => {
 
@@ -477,3 +530,4 @@ mirrorBtn.onclick = () => {
 
     mirrorBtn.textContent = `Mirror: ${mirror ? "On" : "Off"}`;
 };
+
