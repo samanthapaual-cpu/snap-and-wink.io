@@ -521,7 +521,10 @@ filterBtn.onclick = () => {
     }
 
     filterBtn.textContent = `Filter: ${filters[filterIndex][0]}`;
-    canvas.style.filter = filters[filterIndex][1];
+    const previewFilter = filters[filterIndex][1];
+    canvas.style.filter = previewFilter;
+    // Older iOS Safari versions still require the prefixed CSS property.
+    canvas.style.webkitFilter = previewFilter;
 };
 //Mirror
 mirrorBtn.onclick = () => {
